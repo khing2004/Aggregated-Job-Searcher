@@ -42,7 +42,7 @@ Requires **Python 3.9+** (developed on 3.12).
 
 ```bash
 # 1. Get the code
-git clone <your-repo-url>
+git clone https://github.com/khing2004/Aggregated-Job-Searcher.git
 cd JobSearch
 
 # 2. (Optional but recommended) create a virtual environment
@@ -220,4 +220,4 @@ This tool calls public job-board APIs, RSS feeds and your own API keys, and link
 
 ## License
 
-Add a license of your choice (for example MIT) before publishing.
+[MIT](LICENSE) © 2026 Khing Ian Keith Caritero.
