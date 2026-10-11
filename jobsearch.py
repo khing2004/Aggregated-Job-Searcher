@@ -42,6 +42,24 @@ LEADERSHIP = [
     "team manager", "supervisor", "coordinator lead", "operations lead", "project lead", "technical manager",
 ]
 MGMT = ["technical delivery lead", "delivery lead", "delivery manager", "solutions architect", "solution architect", "technical program manager", "engagement manager", "customer success manager", "implementation lead", "technical account manager", "service delivery manager", "program director", "head of delivery", "engineering manager", "technical lead", "product manager", "scrum master", "project coordinator", "program manager"]
+# cybersecurity / infosec family — entry-level-friendly titles listed first
+CYBER = [
+    "soc analyst", "security operations center analyst", "soc analyst tier 1", "soc analyst i",
+    "cybersecurity analyst", "security analyst", "information security analyst", "it security analyst",
+    "cyber security analyst", "junior security analyst", "entry level security analyst",
+    "cybersecurity intern", "security intern", "soc intern", "information security intern",
+    "incident response analyst", "incident responder", "incident response", "cyber incident analyst",
+    "threat intelligence analyst", "threat analyst", "threat hunter", "vulnerability analyst",
+    "vulnerability management analyst", "security engineer", "cybersecurity engineer",
+    "information security engineer", "detection engineer", "blue team analyst", "security operations analyst",
+    "grc analyst", "governance risk and compliance analyst", "security compliance analyst",
+    "it security specialist", "cybersecurity specialist", "security specialist", "siem analyst",
+    "security administrator", "identity and access management analyst", "iam analyst",
+    "application security analyst", "cloud security analyst", "network security analyst",
+    "penetration tester", "junior penetration tester", "ethical hacker", "red team analyst",
+    "security consultant", "security researcher", "malware analyst", "forensics analyst",
+    "digital forensics analyst", "cyber defense analyst", "security operations", "infosec analyst",
+]
 RELATED = {
     "manager": LEADERSHIP, "lead": LEADERSHIP, "director": LEADERSHIP, "head of": LEADERSHIP,
     "management": LEADERSHIP, "leadership": LEADERSHIP, "supervisor": LEADERSHIP, "team lead": LEADERSHIP,
@@ -70,6 +88,12 @@ RELATED = {
     "qa": ["quality assurance", "tester", "test engineer", "sdet", "qa engineer"],
     "devops": ["site reliability", "sre", "cloud engineer", "infrastructure", "platform engineer"],
     "sales": ["business development", "account executive", "sdr", "account manager", "sales representative"],
+    # cybersecurity / infosec — any of these queries fans out across the whole CYBER family
+    "cybersecurity": CYBER, "cyber security": CYBER, "cyber": CYBER, "security": CYBER,
+    "information security": CYBER, "infosec": CYBER, "security analyst": CYBER, "soc analyst": CYBER,
+    "soc": CYBER, "incident response": CYBER, "threat intelligence": CYBER, "security engineer": CYBER,
+    "security operations": CYBER, "penetration testing": CYBER, "pentester": CYBER, "grc": CYBER,
+    "vulnerability management": CYBER, "security operations center": CYBER,
 }
 STOP = set("a an and the of for to in at on with or job jobs remote work senior junior".split())
 
@@ -83,6 +107,10 @@ ACRONYMS = {
     "sdr": "sales development representative", "ae": "account executive", "bd": "business development",
     "dba": "database administrator", "ml": "machine learning engineer", "da": "data analyst",
     "it": "information technology",
+    "soc": "soc analyst", "ir": "incident response", "siem": "siem analyst", "grc": "grc analyst",
+    "iam": "iam analyst", "infosec": "information security analyst", "pentest": "penetration tester",
+    "pentester": "penetration tester", "dfir": "digital forensics analyst", "appsec": "application security analyst",
+    "cti": "threat intelligence analyst", "sec": "security analyst",
 }
 # trailing role noun -> sibling roles, so any off-dictionary "<x> <role>" query still fans out
 SIBLING = {
@@ -121,7 +149,8 @@ def generic_related(q, words):
 
 ENTRY_RE = re.compile(r"\b(entry[- ]level|junior|jr\.?|graduate|fresh(?:er)?|trainee|intern(?:ship)?|"
                       r"associate|no experience|0\s*[-–to]+\s*[12]\s*years?|1\s*[-–]\s*2\s*years?|"
-                      r"beginner|apprentice|coordinator|assistant)\b", re.I)
+                      r"beginner|apprentice|coordinator|assistant|tier\s*(?:1|i)|level\s*(?:1|i)|"
+                      r"(?:analyst|engineer|specialist)\s*(?:1|i)\b|\bt1\b|\bl1\b)\b", re.I)
 SENIOR_RE = re.compile(r"\b(senior|sr\.?|lead|principal|director|head of|vp|vice president|staff|"
                        r"[5-9]\+?\s*(?:\+|or more)?\s*years|1\d\+?\s*years|manager of managers)\b", re.I)
 CITIZEN_RE = re.compile(
@@ -150,17 +179,18 @@ TECH_SOURCE_PREFIXES = ("Greenhouse", "Lever", "Ashby", "Workable", "RemoteOK", 
 def expand(query):
     q = query.lower().strip()
     terms = []
+    # acronyms first so a short query (e.g. "ir", "soc") expands to the right role,
+    # not to a longer dictionary key it happens to be a substring of ("director").
+    terms += generic_related(q, [w for w in re.findall(r"[a-z0-9+#.]+", q) if w not in STOP])
     for key, rel in RELATED.items():
-        if key in q or q in key:
+        if key in q or (len(q) >= 4 and q in key):
             terms += rel
     # also pick up partial matches: any query word that is a key word of a role
     words = [w for w in re.findall(r"[a-z0-9+#.]+", q) if w not in STOP]
     for key, rel in RELATED.items():
         if key != q and any(w in key.split() for w in words) and len(words) > 0 and key in q.replace("-", " "):
             terms += rel
-    # generic / acronym expansion so off-dictionary queries still widen
-    terms += generic_related(q, words)
-    # a term we just produced (e.g. an acronym's full form) may itself be a dictionary key
+    # a term we produced (e.g. an acronym's full form) may itself be a dictionary key
     for t in list(terms):
         if t in RELATED:
             terms += RELATED[t]
@@ -209,6 +239,22 @@ def strip_html(s):
     return re.sub(r"\s+", " ", html.unescape(s)).strip()
 
 
+def to_iso(s):
+    """Normalize any posting date (ISO, RFC-2822 RSS pubDate, timestamp…) to YYYY-MM-DD, else ''."""
+    s = str(s or "").strip()
+    if not s:
+        return ""
+    m = re.match(r"(\d{4})[-/](\d{2})[-/](\d{2})", s)
+    if m:
+        return "%s-%s-%s" % m.groups()
+    try:
+        import email.utils
+        dt = email.utils.parsedate_to_datetime(s)
+        return dt.date().isoformat() if dt else ""
+    except Exception:
+        return ""
+
+
 def parse_salary(text):
     """Return (min_usd_year, max_usd_year) from a free-text salary, or (None, None)."""
     if not text:
@@ -232,7 +278,7 @@ def job(source, title, company, url, location, desc, lo=None, hi=None, salary_te
         remote=None, industries=""):
     return {"source": source, "title": title or "", "company": company or "", "url": url or "",
             "location": location or "", "description": strip_html(desc)[:4000],
-            "salary_min": lo, "salary_max": hi, "salary_text": salary_text, "date": (date or "")[:10],
+            "salary_min": lo, "salary_max": hi, "salary_text": salary_text, "date": to_iso(date),
             "level": level, "remote": remote, "industries": industries if isinstance(industries, str)
             else ", ".join(x for x in (industries or []) if x)}
 
@@ -857,6 +903,11 @@ def search(p, progress=None):
     my_years = float(p["years"]) if str(p.get("years", "")).strip() != "" else None
     show_maybe = p.get("show_maybe", False)          # #5: also show region-unclear remote jobs
     software_only = p.get("industry", "all") == "software"
+    max_age = int(p.get("max_age") or 0)             # only jobs posted within N days (0 = any time)
+    cutoff = ""
+    if max_age:
+        import datetime
+        cutoff = (datetime.date.today() - datetime.timedelta(days=max_age)).isoformat()
 
     def norm(s):
         return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
@@ -892,6 +943,9 @@ def search(p, progress=None):
             continue
         sc, tier = score(j, query, words, related)
         if sc < 6:
+            continue
+        # newly-posted filter: keep jobs dated on/after the cutoff; jobs with no/undated posting are kept
+        if cutoff and j["date"] and j["date"] < cutoff:
             continue
         is_ph_src = j["source"].startswith(("Google Jobs", "Jooble PH", "Active Jobs DB", "HireBase PH"))
         bucket = "main"

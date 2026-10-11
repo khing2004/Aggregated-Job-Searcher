@@ -16,7 +16,8 @@ Python standard library only for the server, plus `openpyxl` for the Excel expor
 | Feature | Details |
 |---|---|
 | Keyword search | Type any role, e.g. `project manager`, `software project manager`, `technical delivery lead`. |
-| Related roles | Your keywords are expanded to related roles (~100 management and leadership titles, plus engineering, product, design, support, data, marketing, sales, HR, QA, DevOps, writing, VA families). Searching "project manager" also finds *delivery manager*, *solutions architect*, *program manager*, *scrum master*, *engineering manager*, etc. Off-dictionary queries still expand via **acronyms** (PM, QA, SWE, UX, HR, CSM…) and **sibling roles** (e.g. "logistics coordinator" → logistics specialist / administrator / assistant), plus HireBase's semantic search. |
+| Related roles | Your keywords are expanded to related roles (~100 management and leadership titles; a cybersecurity/infosec family — *SOC analyst, security analyst, incident response, threat intel, SIEM/GRC/IAM, pen tester, security engineer, internships*…; plus engineering, product, design, support, data, marketing, sales, HR, QA, DevOps, writing, VA families). Searching "project manager" also finds *delivery manager*, *solutions architect*, etc.; "cybersecurity" / "soc" / "infosec" fans out across the whole security family. Off-dictionary queries still expand via **acronyms** (PM, QA, SWE, UX, HR, CSM, SOC, IR, SIEM, GRC, DFIR…) and **sibling roles** (e.g. "logistics coordinator" → logistics specialist / administrator / assistant), plus HireBase's semantic search. |
+| Posted-date filter | Limit to jobs posted within the last 24 hours / 3 / 7 / 14 / 30 days. Posting dates from every source (ISO, RSS, timestamps) are normalized; jobs whose source gives no usable date are kept so nothing is lost silently. |
 | Industry filter | Choose **All industries** or **Software & tech only**. The software filter keeps jobs whose industry, title, company or description signals tech (SaaS, engineering, cloud, data, AI, IT services, startups) and treats the software-focused boards (Greenhouse/Lever/Ashby/Workable companies, RemoteOK, Himalayas…) as tech by default. |
 | Title + description ranking | Each job is scored on its title **and** its full description (phrase match, all-words match, related-role mentions). Each result is tagged `exact match`, `related role`, or `matches description`. |
 | Remote vs Philippines | Choose Remote, Philippines, or Both. |
@@ -161,7 +162,7 @@ Each fresh keyword search costs roughly one call each on JSearch (Philippines), 
 ## Using the app
 
 1. Enter keywords, pick **Remote**, **Philippines** or **Both**, optionally a PH city, and **All industries** vs **Software & tech only**.
-2. Set filters: your years of experience, minimum salary (currency and period), entry-level only, open to Philippines, hide citizenship-required jobs, keep unlisted salaries, and (opt-in) also show region-unclear remote jobs.
+2. Set filters: posted-within (24h–30d), your years of experience, minimum salary (currency and period), entry-level only, open to Philippines, hide citizenship-required jobs, keep unlisted salaries, and (opt-in) also show region-unclear remote jobs.
 3. Click **Search**. Results show title (linked to the posting), company, location, source, date, salary if known, match and arrangement tags, and the full URL. Region-unclear jobs, if enabled, appear in their own section below.
 4. Click **Download Excel application tracker** to export what you found.
 
