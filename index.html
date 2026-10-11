@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Job Search</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2230;--mut:#667085;--ac:#2f5bea;--bd:#e3e6ec;--ok:#14804a}
+@media(prefers-color-scheme:dark){:root{--bg:#12151c;--card:#1b2029;--fg:#e8ebf2;--mut:#9aa3b5;--ac:#7b9bff;--bd:#2a3140;--ok:#4fd18b}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px}
+h1{font-size:22px;margin:0 0 14px}
+form{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;display:grid;gap:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:3px}
+label.chk{flex-direction:row;align-items:center;gap:6px;font-size:14px;color:var(--fg)}
+input,select,button{font:inherit;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg)}
+input[type=text]{flex:1;min-width:200px}input[type=number]{width:120px}
+button{background:var(--ac);color:#fff;border:0;cursor:pointer;font-weight:600}
+.job{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-top:10px}
+.job a.t{font-weight:600;font-size:16px;color:var(--ac);text-decoration:none}
+.meta{color:var(--mut);font-size:13px;margin:2px 0 6px}
+.tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid var(--bd);margin-right:4px}
+.tag.exact{color:var(--ok);border-color:var(--ok)}
+.url{font-size:12px;color:var(--mut);word-break:break-all}
+.links{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-top:8px}
+.links a{display:block;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;color:var(--ac);text-decoration:none;font-weight:600}
+.bar{height:12px;background:var(--bd);border-radius:99px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .3s}
+h2{font-size:16px;margin:20px 0 4px}.note{color:var(--mut);font-size:13px}
+</style></head><body><div class="wrap">
+<h1>Job Search</h1>
+<form id="f">
+ <div class="row"><label style="flex:1">Keywords<input type="text" id="q" placeholder="e.g. project manager, software project manager" required></label><button>Search</button></div>
+ <div class="row">
+  <label>Where<select id="mode"><option value="remote">Remote (outside PH employers)</option><option value="ph">Philippines</option><option value="both">Both</option></select></label>
+  <label>PH city<select id="city"><option value="">Any / nationwide</option></select></label>
+  <label>Companies<select id="ind"><option value="all">All industries</option><option value="software">Software &amp; tech only</option></select></label>
+  <label>Your years of experience<input type="number" id="yrs" min="0" max="40" step="0.5" placeholder="e.g. 2"></label>
+  <label>Min salary<input type="number" id="sal" min="0" placeholder="0"></label>
+  <label>Currency<select id="cur"><option>USD</option><option>PHP</option></select></label>
+  <label>Per<select id="per"><option value="month">month</option><option value="year">year</option></select></label>
+ </div>
+ <div class="row">
+  <label class="chk"><input type="checkbox" id="entry"> Entry-level only</label>
+  <label class="chk"><input type="checkbox" id="openph" checked> Remote jobs open to Philippines-based applicants</label>
+  <label class="chk"><input type="checkbox" id="nocit" checked> Hide jobs requiring citizenship / work authorization</label>
+  <label class="chk"><input type="checkbox" id="unl" checked> Keep jobs with no salary listed</label>
+  <label class="chk"><input type="checkbox" id="maybe"> Also show remote jobs whose region is unclear (verify eligibility)</label>
+ </div>
+</form>
+<p class="note">Philippines rule: jobs in <b>Cebu</b> can be on-site, hybrid or remote. Everywhere else in the Philippines, only <b>remote</b> jobs are shown.</p>
+<div id="out"></div>
+</div>
+<script>
+let last=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+fetch('/api/config').then(r=>r.json()).then(c=>c.cities.forEach(x=>$('city').add(new Option(x,x))));
+$('f').onsubmit=async e=>{
+  e.preventDefault();
+  const p=new URLSearchParams({q:$('q').value,mode:$('mode').value,city:$('city').value,min_salary:$('sal').value,
+    currency:$('cur').value,period:$('per').value,years:$('yrs').value,industry:$('ind').value});
+  if($('entry').checked)p.set('entry','1');if($('openph').checked)p.set('open_ph','1');if($('nocit').checked)p.set('no_citizen','1');if($('unl').checked)p.set('keep_unlisted','1');if($('maybe').checked)p.set('show_maybe','1');
+  $('out').innerHTML='<div id="prog"><b id="pt">Starting… 0%</b><div class="bar"><i id="pb"></i></div><span class="note" id="ps">0 s elapsed</span></div>';
+  const {id}=await (await fetch('/api/search/start?'+p)).json();
+  let d;
+  while(true){
+    const s=await (await fetch('/api/search/status?id='+id)).json();
+    const pct=Math.min(100,Math.round(100*s.done/Math.max(1,s.total)));
+    $('pb').style.width=pct+'%';
+    $('pt').textContent=(s.finished?'Done':'Searching job boards… ')+(s.finished?'':pct+'%');
+    $('ps').textContent=`${s.done} of ${s.total} sources checked · ${s.elapsed.toFixed(0)} s elapsed`+(s.finished?'':' (new keywords take about a minute; repeats are faster)');
+    if(s.finished){ if(s.error){$('out').innerHTML='<p class="note">Search failed: '+esc(s.error)+'</p>';return;} d=s.result; break; }
+    await new Promise(r=>setTimeout(r,500));
+  }
+  let h=`<p class="note"><b>${d.count}</b> jobs found.`+(d.related_terms.length?` Also searched related roles: ${esc(d.related_terms.slice(0,8).join(', '))}…`:'')+`</p>`;
+  if(d.errors.length)h+=`<p class="note">Some sources failed: ${esc(d.errors.join(' | '))}</p>`;
+  if(d.ph_links.length){
+    h+=`<h2>Philippines: open these searches directly</h2><p class="note">${d.jsearch_enabled?'Live PH listings are included below.':'Set RAPIDAPI_KEY (JSearch) to also list PH jobs here. Meanwhile these links run your search (city and entry-level included where supported).'}</p><div class="links">`+
+    d.ph_links.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.name)} ↗</a>`).join('')+`</div>`;
+  }
+  if(d.remote_links.length){
+    h+=`<h2>Remote: search these boards directly too</h2><div class="links">`+d.remote_links.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.name)} ↗</a>`).join('')+`</div>`;
+  }
+  if(d.sources_used.length)h+=`<p class="note">Sources searched: ${esc(d.sources_used.join(', '))}</p>`;
+  last=d;
+  const card=j=>`<div class="job"><a class="t" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
+   <div class="meta">${esc(j.company)} · ${esc(j.location||'Remote')} · ${esc(j.source)}${j.date?' · '+esc(j.date):''}${j.salary_text?' · <b>'+esc(j.salary_text)+'</b>':''}</div>
+   <span class="tag ${j.tier==='exact'?'exact':''}">${j.tier==='exact'?'exact match':j.tier==='related'?'related role':'matches description'}</span>${j.arrangement?`<span class="tag">${esc(j.arrangement)}</span>`:''}${j.entry_signal?'<span class="tag">entry-friendly</span>':''}${j.years_required!=null?`<span class="tag">asks ${j.years_required===0?'no':j.years_required+'+'} yrs exp</span>`:''}${j.also_on&&j.also_on.length?`<span class="tag">also on ${j.also_on.length} more board${j.also_on.length>1?'s':''}</span>`:''}
+   <div class="url">${esc(j.url)}</div></div>`;
+  if(d.jobs.length)h+=`<p><button type="button" id="xl">Download Excel application tracker (${d.jobs.length} jobs)</button></p>`;
+  h+=d.jobs.map(card).join('');
+  if(d.maybe_count){
+    h+=`<h2>Remote jobs with an unclear region (${d.maybe_count})</h2><p class="note">These are remote, but the posting names a specific country. They may still accept Philippines-based applicants — <b>verify eligibility on each posting</b> before applying.</p>`+d.maybe_jobs.map(card).join('');
+  }
+  $('out').innerHTML=h;
+  if($('xl'))$('xl').onclick=async()=>{
+    const r=await fetch('/api/export',{method:'POST',body:JSON.stringify({query:last.query,jobs:last.jobs,ph_links:last.ph_links,remote_links:last.remote_links})});
+    const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());
+    a.download='job-applications-'+last.query.replace(/\W+/g,'-')+'.xlsx';a.click();
+  };
+};
+</script></body></html>

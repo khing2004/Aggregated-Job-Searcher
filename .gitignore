@@ -1,0 +1,7 @@
+.env
+.cache/
+.rapidapi_usage.json
+__pycache__/
+*.pyc
+*.xlsx
+.venv/
